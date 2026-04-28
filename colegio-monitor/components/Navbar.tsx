@@ -16,10 +16,10 @@ export function Navbar({ isAdmin = false }: NavbarProps) {
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <Image
-                src="/logo.png"
+                src="/src/escudo.jpg"
                 alt="Logo Colegio"
-                width={32}
-                height={32}
+                width={40}
+                height={40}
                 className="rounded"
               />
             </div>

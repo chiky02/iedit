@@ -10,11 +10,11 @@ const mysql = require('mysql2/promise');
 const readline = require('readline');
 const path = require('path');
 
-// Cargar variables de entorno
-require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+// Cargar variables de entorno desde raíz del workspace
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const {
-  DB_HOST = '172.22.197.166',
+  DB_HOST = 'localhost',
   DB_PORT = 3306,
   DB_USER = 'root',
   DB_PASSWORD = '2105',

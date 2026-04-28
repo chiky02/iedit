@@ -1,0 +1,178 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  PASOS PARA EJECUTAR EL APLICATIVO                           ║
+║              Transparencia Financiera - Colegio Monitor v1.0                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PRERREQUISITOS:
+  ✓ Node.js 18+ instalado (verificar con: node -v)
+  ✓ MySQL 8 instalado y corriendo (verificar con: mysql -u root -p)
+  ✓ Archivo .env presente en la raíz (/home/Juan/iedit/.env) (CONFIRMAR)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASOS DESDE CERO:
+
+┌─ PASO 1: VERIFICAR MYSQL ESTÁ CORRIENDO
+├─ En terminal ejecuta:
+│  mysql -u root -p
+│  (Ingresa contraseña: 2105)
+│  
+│  Si muestra el prompt "mysql>", está corriendo.
+│  Tipo: exit
+│
+│  Si dice "Cannot connect", inicia MySQL:
+│  - Windows: Services → Busca "MySQL" → Click derecho → Iniciar
+│  - Linux:   sudo service mysql start
+│  - macOS:   brew services start mysql-community-server
+
+┌─ PASO 2: INSTALAR DEPENDENCIAS
+├─ En terminal, dentro de la carpeta del proyecto:
+│  cd /home/Juan/iedit/colegio-monitor
+│  npm install
+│
+│  Esto descargará ~500MB de dependencias (puede tomar 3-5 minutos)
+│  Espera hasta que termine.
+
+┌─ PASO 3: CREAR BASE DE DATOS AUTOMÁTICAMENTE
+├─ En terminal ejecuta:
+│  npm run db:create
+│
+│  Verás algo como:
+│  ✅ Base de datos 'colegio_monitor' creada/verificada exitosamente
+│
+│  Si hay error:
+  - Verifica que DB_USER y DB_PASSWORD en .env (raíz) sean correctos
+│  - Verifica que MySQL esté corriendo
+
+┌─ PASO 4: APLICAR MIGRACIONES (crear tablas)
+├─ En terminal ejecuta:
+│  npm run migrate
+│
+│  Verás algo como:
+│  ✓ Generated Prisma Client
+│  ✓ Created migration
+│
+│  Presiona "Y" cuando pregunte por el nombre de la migración
+
+┌─ PASO 5: CARGAR DATOS DE PRUEBA
+├─ En terminal ejecuta:
+│  npm run prisma:seed
+│
+│  Verás algo como:
+│  ✅ Admin user created: admin@colegio.com
+│  ✅ Sample ingresos created
+│  ✅ Sample gastos created
+
+┌─ PASO 6: INICIAR EL SERVIDOR
+├─ En terminal ejecuta:
+│  npm run dev
+│
+│  Verás algo como:
+│  - ready started server on 0.0.0.0:3000
+│  - event compiled successfully
+│
+│  El servidor está listo cuando ves esa línea.
+
+┌─ PASO 7: ABRIR EN NAVEGADOR
+├─ Abre tu navegador favorito
+│  http://localhost:3000
+│
+│  Deberías ver el Dashboard Público con:
+│  - 3 tarjetas (Ingresos, Gastos, Saldo)
+│  - Gráficos
+│  - Tabla de movimientos
+
+┌─ PASO 8: ACCEDER AL PANEL ADMINISTRATIVO
+├─ En el navegador:
+│  http://localhost:3000/login
+│
+│  Usa estas credenciales:
+│  - Email:    admin@colegio.com
+│  - Password: admin123
+│
+│  Después del login, serás redirigido a:
+│  http://localhost:3000/admin
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ OPCIÓN RÁPIDA (1 comando):
+
+Si quieres hacerlo todo de una vez (después de instalar node_modules):
+
+  npm run setup
+
+Esto ejecuta automáticamente:
+  1. npm run db:create
+  2. npm run migrate
+  3. npm run prisma:seed
+
+Luego:
+  npm run dev
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 RESUMEN DE COMANDOS:
+
+  npm install              → Instalar dependencias (solo 1 vez)
+  npm run db:create        → Crear base de datos
+  npm run migrate          → Crear tablas (migraciones)
+  npm run prisma:seed      → Cargar datos iniciales
+  npm run dev              → Iniciar servidor (http://localhost:3000)
+  npm run build            → Build para producción
+  npm start                → Iniciar en producción
+  npm run db:drop          → Eliminar base de datos (cuidado)
+  npx prisma studio       → Ver BD visualmente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 RUTAS DE LA APLICACIÓN:
+
+  GET    http://localhost:3000              → Dashboard público
+  GET    http://localhost:3000/login        → Formulario de login
+  GET    http://localhost:3000/admin        → Panel administrativo (protegido)
+  GET    http://localhost:3000/admin/logout → Cerrar sesión
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ PROBLEMAS COMUNES Y SOLUCIONES:
+
+1. "Cannot find module 'next'"
+   ✓ Solución: npm install
+
+2. "ERROR Cannot connect to database"
+   ✓ Verifica que MySQL esté corriendo
+   ✓ Verifica credenciales en .env (raíz): DB_HOST, DB_USER, DB_PASSWORD
+   ✓ En Windows, intenta cambiar DB_HOST de IP a "localhost"
+
+3. "ECONNREFUSED"
+   ✓ MySQL no está corriendo
+   ✓ Inicia el servicio MySQL
+
+4. "Access denied for user 'root'"
+   ✓ Verifica contraseña en .env (raíz): DB_PASSWORD
+   ✓ Asegúrate que coincida con tu contraseña MySQL
+
+5. "typescript error TS..."
+   ✓ Ejecuta: npm run prisma:generate
+   ✓ Luego: npm run dev de nuevo
+
+6. "Prisma migration failed"
+   ✓ Ejecuta: npm run db:drop
+   ✓ Luego: npm run db:create
+   ✓ Luego: npm run migrate
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 NOTAS IMPORTANTES:
+
+• El servidor corre en http://localhost:3000
+• Presiona Ctrl+C en terminal para detener el servidor
+• El archivo .env (raíz) contiene credenciales (NO subir a Git)
+• Las migraciones se guardan en prisma/migrations/
+• Los datos se guardan en la BD MySQL
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+¿LISTO? ¡COMIENZA CON EL PASO 1!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

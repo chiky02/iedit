@@ -10,8 +10,9 @@ Aplicación web moderna de transparencia financiera para instituciones educativa
 
 ### 1️⃣ Copia archivo de configuración
 ```bash
-cp .env.example .env.local
-# Ajusta las credenciales de tu MySQL en .env.local
+cd ..  # ir a la raíz del workspace
+cp .env.example .env
+# Ajusta las credenciales de tu MySQL en .env
 ```
 
 ### 2️⃣ Setup automático (lo más fácil)
@@ -191,11 +192,14 @@ colegio-monitor/
 │   ├── create-db.js                # Crear BD
 │   └── drop-db.js                  # Eliminar BD
 │
-├── .env.local                      # Variables de entorno (local)
-├── .env.example                    # Template de variables
 ├── package.json                    # Dependencias
 ├── tsconfig.json                   # TypeScript config
 └── README.md                       # Este archivo
+
+(En la raíz del workspace /home/Juan/iedit/):
+├── .env                            # Variables de entorno (compartido)
+├── .env.example                    # Template de variables
+└── ... (otros archivos)
 ```
 
 ---
@@ -236,21 +240,25 @@ colegio-monitor/
 
 ## ⚙️ Configuración
 
-### Variables de Entorno (`.env.local`)
+### Variables de Entorno (`.env` - raíz del workspace)
 
 ```env
 # Servidor MySQL
-DB_HOST=172.22.197.166      # IP o localhost
+DB_HOST=localhost           # localhost para desarrollo
 DB_PORT=3306                # Puerto MySQL
 DB_USER=root                # Usuario MySQL
 DB_PASSWORD=2105            # Contraseña MySQL
 DB_NAME=colegio_monitor     # Nombre BD
 
+DATABASE_URL="mysql://root:2105@localhost:3306/colegio_monitor"
+
 # Seguridad
-AUTH_SECRET=your-secret-key-here    # Cambiar en producción
+AUTH_SECRET=supersecreto    # Cambiar a valor seguro en producción
 ```
 
-⚠️ **En Windows**: Si la conexión falla, cambia `DB_HOST` a `localhost`
+📍 **Ubicación:** El archivo `.env` debe estar en `/home/Juan/iedit/` (raíz del workspace)
+
+⚠️ **NO incluir en Git:** Este archivo tiene credenciales sensibles
 
 ---
 
@@ -262,7 +270,7 @@ npm install
 ```
 
 ### ❌ "Access denied for user 'root'"
-- Verifica `DB_USER` y `DB_PASSWORD` en `.env.local`
+- Verifica `DB_USER` y `DB_PASSWORD` en `.env` (raíz)
 - Asegúrate de que coincidan con tu servidor MySQL
 
 ### ❌ "Cannot connect to 172.22.197.166"

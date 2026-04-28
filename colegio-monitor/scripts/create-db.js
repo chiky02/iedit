@@ -8,11 +8,11 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
 
-// Cargar variables de entorno
-require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+// Cargar variables de entorno desde raíz del workspace
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 const {
-  DB_HOST = '172.22.197.166',
+  DB_HOST = 'localhost',
   DB_PORT = 3306,
   DB_USER = 'root',
   DB_PASSWORD = '2105',
@@ -57,7 +57,7 @@ async function createDatabase() {
     console.error(`   ${error.message}\n`);
 
     if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-      console.error('💡 Verifica tus credenciales en .env.local:');
+      console.error('💡 Verifica tus credenciales en .env (raíz):');
       console.error(`   - DB_HOST: ${DB_HOST}`);
       console.error(`   - DB_PORT: ${DB_PORT}`);
       console.error(`   - DB_USER: ${DB_USER}`);
@@ -67,7 +67,7 @@ async function createDatabase() {
     } else if (error.code === 'ECONNREFUSED') {
       console.error('💡 No se puede conectar a MySQL. Verifica:');
       console.error(`   1. MySQL está corriendo en ${DB_HOST}:${DB_PORT}`);
-      console.error('   2. Las credenciales en .env.local son correctas');
+      console.error('   2. Las credenciales en .env (raíz) son correctas');
       console.error(
         '   3. En Windows: Intenta cambiar DB_HOST=localhost si usas IP\n'
       );
