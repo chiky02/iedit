@@ -1,5 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -10,38 +9,104 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Usuario {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  password  String
-  nombre    String
-  rol       String     @default("admin")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+// --- SISTEMA DE USUARIOS Y ACCESO (RBAC) ---
 
-  @@map("usuarios")
+model User {
+  id            String           @id @default(cuid())
+  nombre        String
+  email         String           @unique
+  password      String
+  isActive      Boolean          @default(true)
+  roleId        String
+  role          Role             @relation(fields: [roleId], references: [id])
+  transacciones Transaccion[]
+  noticias      Noticia[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 }
 
-model Ingreso {
-  id          String   @id @default(cuid())
-  monto       Decimal  @db.Decimal(12, 2)
-  descripcion String   @db.Text
-  categoria   String
-  fecha       DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("ingresos")
+model Role {
+  id          String           @id @default(cuid())
+  nombre      String           @unique // Ejemplo: 'ADMIN', 'RECTOR', 'CONTADOR'
+  descripcion String?
+  users       User[]
+  permissions RolePermission[]
 }
 
-model Gasto {
-  id          String   @id @default(cuid())
-  monto       Decimal  @db.Decimal(12, 2)
-  descripcion String   @db.Text
-  categoria   String
-  fecha       DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Permission {
+  id          String           @id @default(cuid())
+  slug        String           @unique // Ejemplo: 'finanzas:leer', 'noticias:crear'
+  descripcion String?
+  roles       RolePermission[]
+}
 
-  @@map("gastos")
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+// --- SISTEMA FINANCIERO (Transparencia) ---
+
+model Categoria {
+  id            String         @id @default(cuid())
+  nombre        String         @unique
+  tipo          TipoMovimiento // INGRESO o GASTO
+  color         String?        @default("#4F46E5")
+  subcategorias Subcategoria[]
+}
+
+model Subcategoria {
+  id            String        @id @default(cuid())
+  nombre        String
+  categoriaId   String
+  categoria     Categoria     @relation(fields: [categoriaId], references: [id])
+  transacciones Transaccion[]
+}
+
+model Transaccion {
+  id             String       @id @default(cuid())
+  monto          Decimal      @db.Decimal(12, 2)
+  descripcion    String       @db.Text
+  fecha          DateTime     @default(now())
+  estado         EstadoTrans  @default(APROBADO)
+  
+  // Relaciones
+  usuarioId      String
+  usuario        User         @relation(fields: [usuarioId], references: [id])
+  subcategoriaId String
+  subcategoria   Subcategoria @relation(fields: [subcategoriaId], references: [id])
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// --- COMUNICACIÓN ---
+
+model Noticia {
+  id        String   @id @default(cuid())
+  titulo    String
+  contenido String   @db.LongText
+  imagenUrl String?
+  esPublica Boolean  @default(true)
+  autorId   String
+  autor     User     @relation(fields: [autorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- ENUMS (Tipos fijos) ---
+
+enum TipoMovimiento {
+  INGRESO
+  GASTO
+}
+
+enum EstadoTrans {
+  PENDIENTE
+  APROBADO
+  ANULADO
 }

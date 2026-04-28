@@ -3,81 +3,72 @@ import bcryptjs from 'bcryptjs';
 
 async function main() {
   console.log('🌱 Seeding database...');
+console.log("Tablas detectadas:", Object.keys(prisma).filter(k => !k.startsWith('$')));
+  // 1. CREAR ROL Y USUARIO (Ahora el rol es obligatorio)
+  const adminRole = await prisma.role.upsert({
+    where: { nombre: 'admin' },
+    update: {},
+    create: { nombre: 'admin', descripcion: 'Administrador' },
+  });
 
-  // Crear usuario administrador
-  const admin = await prisma.usuario.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: 'admin@colegio.com' },
     update: {},
     create: {
       email: 'admin@colegio.com',
       password: await bcryptjs.hash('admin123', 10),
       nombre: 'Administrador',
-      rol: 'admin',
+      roleId: adminRole.id, // Vinculamos el usuario al rol
     },
   });
 
-  console.log('✅ Admin user created:', admin.email);
+  console.log('✅ Admin user created');
 
-  // Datos de ejemplo
-  const ingresosPrueba = [
+  // 2. CREAR CATEGORÍAS (Necesarias para las transacciones)
+  const catIngreso = await prisma.categoria.create({
+    data: {
+      nombre: 'Matrículas',
+      tipo: 'INGRESO',
+      subcategorias: { create: { nombre: 'General' } }
+    },
+    include: { subcategorias: true }
+  });
+
+  const catGasto = await prisma.categoria.create({
+    data: {
+      nombre: 'Nómina',
+      tipo: 'GASTO',
+      subcategorias: { create: { nombre: 'Docentes' } }
+    },
+    include: { subcategorias: true }
+  });
+
+  // 3. DATOS DE EJEMPLO (Adaptados a la nueva tabla Transaccion)
+  const transaccionesPrueba = [
     {
       monto: 5000000,
       descripcion: 'Matrícula - Estudiante 001',
-      categoria: 'Matrícula',
       fecha: new Date('2024-01-15'),
+      usuarioId: admin.id,
+      subcategoriaId: catIngreso.subcategorias[0].id,
+      estado: 'APROBADO'
     },
-    {
-      monto: 3500000,
-      descripcion: 'Matrícula - Estudiante 002',
-      categoria: 'Matrícula',
-      fecha: new Date('2024-01-16'),
-    },
-    {
-      monto: 1000000,
-      descripcion: 'Donación - Empresa XYZ',
-      categoria: 'Donaciones',
-      fecha: new Date('2024-02-01'),
-    },
-  ];
-
-  const gastosPrueba = [
     {
       monto: 2500000,
       descripcion: 'Salario - Docente',
-      categoria: 'Nómina',
       fecha: new Date('2024-01-30'),
-    },
-    {
-      monto: 500000,
-      descripcion: 'Servicios de agua y luz',
-      categoria: 'Servicios',
-      fecha: new Date('2024-02-05'),
-    },
-    {
-      monto: 300000,
-      descripcion: 'Materiales de papelería',
-      categoria: 'Materiales',
-      fecha: new Date('2024-02-10'),
-    },
+      usuarioId: admin.id,
+      subcategoriaId: catGasto.subcategorias[0].id,
+      estado: 'APROBADO'
+    }
   ];
 
-  // Crear ingresos
-  for (const ingreso of ingresosPrueba) {
-    await prisma.ingreso.create({
-      data: ingreso,
-    });
+  // 4. CREAR TRANSACCIONES
+  for (const t of transaccionesPrueba) {
+    await prisma.transaccion.create({ data: t });
   }
 
-  console.log('✅ Sample ingresos created');
-
-  // Crear gastos
-  for (const gasto of gastosPrueba) {
-    await prisma.gasto.create({
-      data: gasto,
-    });
-  }
-
-  console.log('✅ Sample gastos created');
+  console.log('✅ Sample data created');
   console.log('🎉 Seeding completed!');
 }
 

@@ -4,9 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { createToken, setAuthCookie, verifyAuth, logout as logoutAuth } from '@/lib/auth';
 import bcryptjs from 'bcryptjs';
 
+// --- LOGIN ---
 export async function loginAction(email: string, password: string) {
   try {
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prisma.user.findUnique({
       where: { email },
     });
 
@@ -34,71 +35,57 @@ export async function loginAction(email: string, password: string) {
   }
 }
 
-export async function createIngresoAction(
-  monto: number,
-  descripcion: string,
-  categoria: string,
-  fecha: string
-) {
+// --- LÓGICA DE TRANSACCIONES ---
+
+// Función interna (no se exporta, no necesita ser async necesariamente, pero ayuda)
+async function createTransaction(monto: number, descripcion: string, subcategoriaId: string, fecha: string) {
   try {
     const auth = await verifyAuth();
-    if (!auth) {
-      return { error: 'No autorizado' };
-    }
+    if (!auth) return { error: 'No autorizado' };
 
-    const ingreso = await prisma.ingreso.create({
+    const transaccion = await prisma.transaccion.create({
       data: {
-        monto: parseFloat(monto.toString()),
+        monto: Number(monto),
         descripcion,
-        categoria,
         fecha: new Date(fecha),
+        usuarioId: auth.userId,
+        subcategoriaId: subcategoriaId,
+        estado: 'APROBADO'
       },
     });
 
-    return { success: true, ingreso };
+    return { success: true, transaccion };
   } catch (error) {
-    console.error('Error al crear ingreso:', error);
-    return { error: 'Error al crear ingreso' };
+    console.error('Error al crear transacción:', error);
+    return { error: 'Error en la base de datos' };
   }
 }
 
-export async function createGastoAction(
-  monto: number,
-  descripcion: string,
-  categoria: string,
-  fecha: string
-) {
-  try {
-    const auth = await verifyAuth();
-    if (!auth) {
-      return { error: 'No autorizado' };
-    }
-
-    const gasto = await prisma.gasto.create({
-      data: {
-        monto: parseFloat(monto.toString()),
-        descripcion,
-        categoria,
-        fecha: new Date(fecha),
-      },
-    });
-
-    return { success: true, gasto };
-  } catch (error) {
-    console.error('Error al crear gasto:', error);
-    return { error: 'Error al crear gasto' };
-  }
+// CORRECCIÓN: Ahora son funciones async con nombre
+export async function createIngresoAction(monto: number, desc: string, subId: string, fecha: string) {
+  return await createTransaction(monto, desc, subId, fecha);
 }
 
+export async function createGastoAction(monto: number, desc: string, subId: string, fecha: string) {
+  return await createTransaction(monto, desc, subId, fecha);
+}
+
+// --- RESUMEN ---
 export async function getFinancialSummary() {
   try {
-    const [ingresos, gastos] = await Promise.all([
-      prisma.ingreso.findMany(),
-      prisma.gasto.findMany(),
-    ]);
+    const transacciones = await prisma.transaccion.findMany({
+      include: {
+        subcategoria: {
+          include: { categoria: true }
+        }
+      }
+    });
 
-    const totalIngresos = ingresos.reduce((sum, ing) => sum + Number(ing.monto), 0);
-    const totalGastos = gastos.reduce((sum, gasto) => sum + Number(gasto.monto), 0);
+    const ingresos = transacciones.filter(t => t.subcategoria.categoria.tipo === 'INGRESO');
+    const gastos = transacciones.filter(t => t.subcategoria.categoria.tipo === 'GASTO');
+
+    const totalIngresos = ingresos.reduce((sum, t) => sum + Number(t.monto), 0);
+    const totalGastos = gastos.reduce((sum, t) => sum + Number(t.monto), 0);
     const saldo = totalIngresos - totalGastos;
 
     return {
