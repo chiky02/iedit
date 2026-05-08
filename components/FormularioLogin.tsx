@@ -20,10 +20,9 @@ export function FormularioLogin() {
 
     try {
       const result = await loginAction(email, password);
-
       if (result.error) {
         setError(result.error);
-      } else if (result.success) {
+      } else {
         router.push('/admin');
         router.refresh();
       }
@@ -35,29 +34,25 @@ export function FormularioLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Panel Administrativo
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Acceso restringido - Solo Administradores
-          </p>
+    <div className="min-h-screen bg-[#f5f8f1] py-12 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-md rounded-[32px] border border-[#dfe9db] bg-white p-8 shadow-lg">
+        <div className="text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[#276749]">Ingreso administrador</p>
+          <h2 className="mt-4 text-3xl font-bold text-slate-900">Accede al panel privado</h2>
+          <p className="mt-2 text-sm text-slate-600">Solo cuentas administrativas pueden gestionar noticias, roles y sugerencias.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+              {error}
             </div>
           )}
 
-          <div className="rounded-md shadow-sm -space-y-px">
-            {/* Email */}
+          <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Correo Electrónico
+              <label htmlFor="email" className="text-sm font-medium text-slate-700">
+                Correo electrónico
               </label>
               <input
                 id="email"
@@ -65,14 +60,13 @@ export function FormularioLogin() {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Correo del administrador"
+                className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none"
+                placeholder="admin@colegio.com"
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="text-sm font-medium text-slate-700">
                 Contraseña
               </label>
               <input
@@ -81,7 +75,7 @@ export function FormularioLogin() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none"
                 placeholder="Contraseña"
               />
             </div>
@@ -90,20 +84,16 @@ export function FormularioLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
+            className="w-full rounded-3xl bg-[#276749] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1f4f37] disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {loading ? 'Enviando...' : 'Iniciar sesión'}
           </button>
         </form>
 
-        <div className="text-center text-sm text-gray-600">
-          <p>
-            Para pruebas:
-            <br />
-            Email: admin@colegio.com
-            <br />
-            Password: admin123
-          </p>
+        <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600">
+          <p className="font-medium text-slate-900">Credenciales de prueba</p>
+          <p>Email: admin@colegio.com</p>
+          <p>Contraseña: admin123</p>
         </div>
       </div>
     </div>

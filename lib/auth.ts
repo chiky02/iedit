@@ -1,9 +1,12 @@
 import { jwtVerify, SignJWT } from 'jose';
 import { cookies } from 'next/headers';
 
-const secret = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'default-secret-key'
-);
+const secretKey = process.env.AUTH_SECRET;
+if (!secretKey) {
+  throw new Error('AUTH_SECRET must be defined in the environment variables');
+}
+
+const secret = new TextEncoder().encode(secretKey);
 
 export interface JwtPayload {
   userId: string;
@@ -33,9 +36,15 @@ export async function verifyAuth(): Promise<JwtPayload | null> {
   }
 }
 
-export async function logout() {
+export async function clearAuthCookie() {
   const cookieStore = await cookies();
-  cookieStore.delete('auth-token');
+  cookieStore.set('auth-token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 0,
+  });
 }
 
 export async function setAuthCookie(token: string) {
@@ -43,7 +52,8 @@ export async function setAuthCookie(token: string) {
   cookieStore.set('auth-token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
+    path: '/',
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 }

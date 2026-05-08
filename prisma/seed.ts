@@ -1,15 +1,81 @@
 import { prisma } from '../lib/prisma';
 import bcryptjs from 'bcryptjs';
 
+const permissions = [
+  { slug: 'noticias:create', descripcion: 'Crear noticias' },
+  { slug: 'noticias:read', descripcion: 'Ver noticias administrativas' },
+  { slug: 'noticias:update', descripcion: 'Editar noticias' },
+  { slug: 'noticias:delete', descripcion: 'Eliminar noticias' },
+  { slug: 'usuarios:create', descripcion: 'Crear usuarios' },
+  { slug: 'usuarios:read', descripcion: 'Ver usuarios' },
+  { slug: 'usuarios:update', descripcion: 'Editar usuarios' },
+  { slug: 'usuarios:delete', descripcion: 'Eliminar usuarios' },
+  { slug: 'roles:create', descripcion: 'Crear roles' },
+  { slug: 'roles:read', descripcion: 'Ver roles' },
+  { slug: 'roles:update', descripcion: 'Editar roles' },
+  { slug: 'roles:delete', descripcion: 'Eliminar roles' },
+  { slug: 'sugerencias:read', descripcion: 'Ver buzón de sugerencias' },
+  { slug: 'sugerencias:delete', descripcion: 'Eliminar sugerencias' },
+];
+
+async function upsertPermission(permission: { slug: string; descripcion: string }) {
+  return prisma.permission.upsert({
+    where: { slug: permission.slug },
+    update: {},
+    create: permission,
+  });
+}
+
+async function assignPermission(roleId: string, permissionId: string) {
+  return prisma.rolePermission.upsert({
+    where: {
+      roleId_permissionId: {
+        roleId,
+        permissionId,
+      },
+    },
+    update: {},
+    create: {
+      roleId,
+      permissionId,
+    },
+  });
+}
+
 async function main() {
   console.log('🌱 Seeding database...');
-console.log("Tablas detectadas:", Object.keys(prisma).filter(k => !k.startsWith('$')));
-  // 1. CREAR ROL Y USUARIO (Ahora el rol es obligatorio)
+
+  const createdPermissions = await Promise.all(permissions.map(upsertPermission));
+
   const adminRole = await prisma.role.upsert({
     where: { nombre: 'admin' },
-    update: {},
-    create: { nombre: 'admin', descripcion: 'Administrador' },
+    update: { descripcion: 'Administrador con todos los permisos' },
+    create: {
+      nombre: 'admin',
+      descripcion: 'Administrador con todos los permisos',
+    },
   });
+
+  for (const permission of createdPermissions) {
+    await assignPermission(adminRole.id, permission.id);
+  }
+
+  const editorRole = await prisma.role.upsert({
+    where: { nombre: 'editor' },
+    update: { descripcion: 'Editor de noticias' },
+    create: {
+      nombre: 'editor',
+      descripcion: 'Editor de noticias',
+    },
+  });
+
+  const editorPermissions = createdPermissions.filter((permission) =>
+    ['noticias:create', 'noticias:read', 'noticias:update', 'noticias:delete'].includes(permission.slug)
+  );
+
+  for (const permission of editorPermissions) {
+    await assignPermission(editorRole.id, permission.id);
+  }
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@colegio.com' },
@@ -18,63 +84,48 @@ console.log("Tablas detectadas:", Object.keys(prisma).filter(k => !k.startsWith(
       email: 'admin@colegio.com',
       password: await bcryptjs.hash('admin123', 10),
       nombre: 'Administrador',
-      roleId: adminRole.id, // Vinculamos el usuario al rol
+      roleId: adminRole.id,
     },
   });
 
-  console.log('✅ Admin user created');
-
-  // 2. CREAR CATEGORÍAS (Necesarias para las transacciones)
-  const catIngreso = await prisma.categoria.create({
-    data: {
-      nombre: 'Matrículas',
-      tipo: 'INGRESO',
-      subcategorias: { create: { nombre: 'General' } }
+  await prisma.noticia.upsert({
+    where: { slug: 'transparencia-financiera-2026' },
+    update: {},
+    create: {
+      titulo: 'Transparencia financiera 2026',
+      slug: 'transparencia-financiera-2026',
+      contenido:
+        '<p>Bienvenido al buzón de comunicación institucional donde encontrarás noticias sobre finanzas, eventos y decisiones escolares. Todas las novedades son publicadas por el equipo administrativo.</p>',
+      categoria: 'Financiero',
+      tipo: 'FINANCIERO',
+      imagenUrl: null,
+      esPublica: true,
+      autorId: admin.id,
     },
-    include: { subcategorias: true }
   });
 
-  const catGasto = await prisma.categoria.create({
-    data: {
-      nombre: 'Nómina',
-      tipo: 'GASTO',
-      subcategorias: { create: { nombre: 'Docentes' } }
+  await prisma.noticia.upsert({
+    where: { slug: 'gran-festival-deportivo-2026' },
+    update: {},
+    create: {
+      titulo: 'Gran festival deportivo 2026',
+      slug: 'gran-festival-deportivo-2026',
+      contenido:
+        '<p>El colegio invita a toda la comunidad a participar en el festival deportivo del próximo mes. Habrá competencias, premiaciones y actividades para toda la familia.</p>',
+      categoria: 'Eventos',
+      tipo: 'EVENTO',
+      imagenUrl: null,
+      esPublica: true,
+      autorId: admin.id,
     },
-    include: { subcategorias: true }
   });
 
-  // 3. DATOS DE EJEMPLO (Adaptados a la nueva tabla Transaccion)
-  const transaccionesPrueba = [
-    {
-      monto: 5000000,
-      descripcion: 'Matrícula - Estudiante 001',
-      fecha: new Date('2024-01-15'),
-      usuarioId: admin.id,
-      subcategoriaId: catIngreso.subcategorias[0].id,
-      estado: 'APROBADO'
-    },
-    {
-      monto: 2500000,
-      descripcion: 'Salario - Docente',
-      fecha: new Date('2024-01-30'),
-      usuarioId: admin.id,
-      subcategoriaId: catGasto.subcategorias[0].id,
-      estado: 'APROBADO'
-    }
-  ];
-
-  // 4. CREAR TRANSACCIONES
-  for (const t of transaccionesPrueba) {
-    await prisma.transaccion.create({ data: t });
-  }
-
-  console.log('✅ Sample data created');
-  console.log('🎉 Seeding completed!');
+  console.log('✅ Seed completed');
 }
 
 main()
   .catch((error) => {
-    console.error('❌ Seeding error:', error);
+    console.error('❌ Seed failed:', error);
     process.exit(1);
   })
   .finally(async () => {
