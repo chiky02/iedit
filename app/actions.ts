@@ -31,6 +31,7 @@ function normalizeString(value: unknown) {
 type NoticiaConAutor = Awaited<ReturnType<typeof prisma.noticia.findMany>>[number];
 type SugerenciaConFecha = Awaited<ReturnType<typeof prisma.sugerencia.findMany>>[number];
 type RolePermissionConSlug = Awaited<ReturnType<typeof prisma.role.findMany>>[number]['permissions'][number];
+type PermissionData = Awaited<ReturnType<typeof prisma.permission.findMany>>[number];
 
 async function getSessionUser() {
   const auth = await verifyAuth();
@@ -442,7 +443,7 @@ export async function createRoleAction(
     });
 
     await Promise.all(
-      permissions.map((permission) =>
+      permissions.map((permission: PermissionData) =>
         prisma.rolePermission.create({
           data: {
             roleId: role.id,
@@ -511,7 +512,7 @@ export async function updateRoleAction(
     });
 
     await Promise.all(
-      permissions.map((permission) =>
+      permissions.map((permission: PermissionData) =>
         prisma.rolePermission.create({
           data: {
             roleId: id,
