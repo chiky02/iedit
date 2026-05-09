@@ -4,12 +4,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+type AdminSection = 'noticias' | 'usuarios' | 'roles' | 'sugerencias';
+
 interface AdminSidebarProps {
-  activeSection: string;
-  onSectionChange: (section: 'noticias' | 'usuarios' | 'roles' | 'sugerencias') => void;
+  activeSection: AdminSection;
+  onSectionChange: (section: AdminSection) => void;
+  allowedSections: AdminSection[];
 }
 
-export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarProps) {
+export function AdminSidebar({ activeSection, onSectionChange, allowedSections }: AdminSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
@@ -38,7 +41,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
       href: '/admin#sugerencias',
       section: 'sugerencias' as const,
     },
-  ];
+  ].filter((item) => allowedSections.includes(item.section));
 
   const handleSectionClick = (section: 'noticias' | 'usuarios' | 'roles' | 'sugerencias') => {
     onSectionChange(section);
@@ -77,7 +80,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
             <img
               src="/src/logo.jpeg"
               alt="logo"
-              className="h-8 w-8 rounded-xl object-cover"
+              className="h-18 w-18 rounded-xl object-cover"
             />
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.26em] text-[#f8f2be]">IEDIT</p>
@@ -132,6 +135,11 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
                 {item.label}
               </button>
             ))}
+            {menuItems.length === 0 && (
+              <p className="px-4 py-3 text-sm text-white/70">
+                No tienes permisos para ver secciones administrativas.
+              </p>
+            )}
           </div>
         </nav>
 

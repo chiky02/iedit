@@ -109,10 +109,12 @@ export async function getPublicNews(params: {
   tipo?: string;
   from?: string;
   to?: string;
+  sort?: 'asc' | 'desc';
 }): Promise<PublicNewsResult> {
   try {
     const pageSize = 5;
     const page = params.page && params.page > 0 ? params.page : 1;
+    const sortOrder = params.sort === 'asc' ? 'asc' : 'desc';
     const where: any = {
       esPublica: true,
     };
@@ -138,7 +140,7 @@ export async function getPublicNews(params: {
     const total = await prisma.noticia.count({ where });
     const noticias = await prisma.noticia.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: sortOrder },
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: { autor: true },
@@ -172,7 +174,7 @@ export async function getNewsCategories() {
 }
 
 export async function getAdminData() {
-  await requireAuth();
+  const user = await requireAuth();
 
   const [users, roles, noticias, suggestions, permissions] = await Promise.all([
     prisma.user.findMany({
@@ -197,6 +199,8 @@ export async function getAdminData() {
     }),
   ]);
 
+  const currentUserPermissionSlugs = user.role?.permissions.map((rolePermission) => rolePermission.permission.slug) ?? [];
+
   // Format dates as strings to avoid hydration mismatch
   const noticiasWithFormattedDates = noticias.map((noticia) => ({
     ...noticia,
@@ -208,7 +212,14 @@ export async function getAdminData() {
     createdAt: suggestion.createdAt.toLocaleDateString('es-CO'),
   }));
 
-  return { users, roles, noticias: noticiasWithFormattedDates, suggestions: suggestionsWithFormattedDates, permissions };
+  return {
+    users,
+    roles,
+    noticias: noticiasWithFormattedDates,
+    suggestions: suggestionsWithFormattedDates,
+    permissions,
+    currentUserPermissionSlugs,
+  };
 }
 
 export async function createNewsAction(
@@ -374,6 +385,25 @@ export async function updateUserAction(
 export async function deleteUserAction(id: string) {
   try {
     await requirePermission('usuarios:delete');
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
+
+    if (!user) {
+      return { error: 'Usuario no encontrado' };
+    }
+
+    // Proteger usuarios críticos del sistema
+    if (user.email === 'admin@colegio.com') {
+      return { error: 'No se puede eliminar el usuario administrador del sistema' };
+    }
+
+    if (user.role.nombre === 'admin') {
+      return { error: 'No se puede eliminar usuarios con rol de administrador' };
+    }
+
     await prisma.user.delete({ where: { id } });
     return { success: true };
   } catch (error) {
@@ -425,15 +455,95 @@ export async function createRoleAction(
   }
 }
 
+export async function updateRoleAction(
+  id: string,
+  nombre: string,
+  descripcion: string,
+  permissionSlugs: string[]
+) {
+  try {
+    await requirePermission('roles:update');
+    const roleName = normalizeString(nombre);
+    const roleDescription = normalizeString(descripcion);
+
+    if (!roleName) {
+      return { error: 'El nombre del rol es obligatorio' };
+    }
+
+    const existingRole = await prisma.role.findUnique({ where: { id } });
+    if (!existingRole) {
+      return { error: 'Rol no encontrado' };
+    }
+
+    if (existingRole.nombre === 'admin') {
+      return { error: 'No se puede editar el rol administrador del sistema' };
+    }
+
+    const duplicateRole = await prisma.role.findFirst({
+      where: {
+        nombre: roleName,
+        id: { not: id },
+      },
+    });
+
+    if (duplicateRole) {
+      return { error: 'Ya existe un rol con ese nombre' };
+    }
+
+    const permissions = await prisma.permission.findMany({
+      where: { slug: { in: permissionSlugs } },
+    });
+
+    await prisma.role.update({
+      where: { id },
+      data: {
+        nombre: roleName,
+        descripcion: roleDescription || null,
+      },
+    });
+
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: id },
+    });
+
+    await Promise.all(
+      permissions.map((permission) =>
+        prisma.rolePermission.create({
+          data: {
+            roleId: id,
+            permissionId: permission.id,
+          },
+        })
+      )
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error al actualizar rol:', error);
+    return { error: error instanceof Error ? error.message : 'Error al actualizar el rol' };
+  }
+}
+
 export async function deleteRoleAction(id: string) {
   try {
     await requirePermission('roles:delete');
-    const role = await prisma.role.findUnique({ where: { id }, include: { users: true } });
+
+    const role = await prisma.role.findUnique({
+      where: { id },
+      include: { users: true },
+    });
+
     if (!role) {
       return { error: 'Rol no encontrado' };
     }
+
+    // Proteger roles críticos del sistema
+    if (role.nombre === 'admin') {
+      return { error: 'No se puede eliminar el rol de administrador del sistema' };
+    }
+
     if (role.users.length > 0) {
-      return { error: 'No se puede eliminar un rol asignado a usuarios' };
+      return { error: 'No se puede eliminar un rol asignado a usuarios. Primero reasigna los usuarios a otro rol.' };
     }
 
     await prisma.role.delete({ where: { id } });

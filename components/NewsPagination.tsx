@@ -6,6 +6,8 @@ interface NewsPaginationProps {
   tipo?: string;
   from?: string;
   to?: string;
+  sort?: 'asc' | 'desc';
+  basePath?: string;
 }
 
 function buildQuery(params: Record<string, string | number | undefined>) {
@@ -26,6 +28,8 @@ export function NewsPagination({
   tipo,
   from,
   to,
+  sort = 'desc',
+  basePath = '/',
 }: NewsPaginationProps) {
   const prevQuery = buildQuery({
     page: page - 1 > 0 ? page - 1 : undefined,
@@ -33,6 +37,7 @@ export function NewsPagination({
     tipo,
     from,
     to,
+    sort,
   });
 
   const nextQuery = buildQuery({
@@ -41,13 +46,14 @@ export function NewsPagination({
     tipo,
     from,
     to,
+    sort,
   });
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
       <div className="flex items-center justify-between">
         <a
-          href={prevQuery ? `/?${prevQuery}` : '#'}
+          href={prevQuery ? `${basePath}?${prevQuery}` : '#'}
           className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${page > 1 ? 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400'}`}
         >
           ← Anterior
@@ -56,7 +62,7 @@ export function NewsPagination({
           <p className="text-xs font-medium text-slate-600">Página {page} de {totalPages}</p>
         </div>
         <a
-          href={nextQuery ? `/?${nextQuery}` : '#'}
+          href={nextQuery ? `${basePath}?${nextQuery}` : '#'}
           className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${page < totalPages ? 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400'}`}
         >
           Siguiente →

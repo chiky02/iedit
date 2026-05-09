@@ -24,9 +24,25 @@ interface RolesSectionProps {
 
 export function RolesSection({ roles, permissions, isPending, onSubmit, onDelete }: RolesSectionProps) {
   const [form, setForm] = useState({
+    id: '',
     nombre: '',
     descripcion: '',
     permissions: [] as string[],
+  });
+  const [search, setSearch] = useState('');
+  const [permissionFilter, setPermissionFilter] = useState('all');
+
+  const filteredRoles = roles.filter((role) => {
+    const normalizedSearch = search.toLowerCase().trim();
+    const matchesSearch =
+      role.nombre.toLowerCase().includes(normalizedSearch) ||
+      role.descripcion?.toLowerCase().includes(normalizedSearch);
+
+    const matchesPermission =
+      permissionFilter === 'all' ||
+      role.permissions.some((rp) => rp.permission.slug === permissionFilter);
+
+    return matchesSearch && matchesPermission;
   });
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -35,7 +51,16 @@ export function RolesSection({ roles, permissions, isPending, onSubmit, onDelete
   };
 
   const handleReset = () => {
-    setForm({ nombre: '', descripcion: '', permissions: [] });
+    setForm({ id: '', nombre: '', descripcion: '', permissions: [] });
+  };
+
+  const handleEditRole = (role: Role) => {
+    setForm({
+      id: role.id,
+      nombre: role.nombre,
+      descripcion: role.descripcion || '',
+      permissions: role.permissions.map((rp) => rp.permission.slug),
+    });
   };
 
   return (
@@ -86,28 +111,95 @@ export function RolesSection({ roles, permissions, isPending, onSubmit, onDelete
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="mt-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-        >
-          Crear rol
-        </button>
+        <div className="flex flex-wrap gap-3">
+          {form.id && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-2xl border border-slate-300 bg-slate-100 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-200"
+            >
+              Cancelar edición
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={isPending}
+            className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {form.id ? 'Actualizar rol' : 'Crear rol'}
+          </button>
+        </div>
       </form>
 
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700">Buscar roles</label>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nombre o descripción"
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Filtrar por permiso</label>
+            <select
+              value={permissionFilter}
+              onChange={(e) => setPermissionFilter(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="all">Todos los permisos</option>
+              {permissions.map((permission) => (
+                <option key={permission.slug} value={permission.slug}>
+                  {permission.slug}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-6 space-y-3">
-        {roles.map((role) => (
+        {filteredRoles.map((role) => (
           <div key={role.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-semibold text-slate-900">{role.nombre}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-slate-900">{role.nombre}</p>
+                  {role.nombre === 'admin' && (
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                      Sistema
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-slate-600">{role.descripcion || 'Sin descripción'}</p>
+                <p className="text-xs text-slate-500">
+                  {role.permissions.length} permiso{role.permissions.length !== 1 ? 's' : ''}
+                </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
+                  onClick={() => handleEditRole(role)}
+                  disabled={role.nombre === 'admin'}
+                  className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                    role.nombre === 'admin'
+                      ? 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400'
+                      : 'border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50'
+                  }`}
+                >
+                  Editar rol
+                </button>
+                <button
+                  type="button"
                   onClick={() => onDelete(role.id)}
-                  className="rounded-2xl border border-rose-600 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                  disabled={role.nombre === 'admin'}
+                  className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                    role.nombre === 'admin'
+                      ? 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400'
+                      : 'border-rose-600 bg-white text-rose-700 hover:bg-rose-50'
+                  }`}
                 >
                   Eliminar rol
                 </button>

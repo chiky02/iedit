@@ -10,6 +10,7 @@ interface SearchParams {
   tipo?: string | string[];
   from?: string | string[];
   to?: string | string[];
+  sort?: string | string[];
 }
 
 function normalizeSearchParam(value: string | string[] | undefined) {
@@ -24,21 +25,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
   const tipo = normalizeSearchParam(params.tipo);
   const from = normalizeSearchParam(params.from);
   const to = normalizeSearchParam(params.to);
+  const sort = (normalizeSearchParam(params.sort) as 'asc' | 'desc' | undefined) || 'desc';
 
-  const [newsData, categories] = await Promise.all([
-    getPublicNews({ page, categoria, tipo, from, to }),
+  const [newsDataEventos, newsDataOtros, categories] = await Promise.all([
+    getPublicNews({ page, categoria, tipo: 'EVENTO', from, to, sort }),
+    getPublicNews({ page, categoria, tipo: 'OTRO', from, to, sort }),
     getNewsCategories(),
   ]);
 
-  if ('error' in newsData) {
+  if ('error' in newsDataEventos && 'error' in newsDataOtros) {
     return (
       <div className="min-h-screen bg-[#faf7e4] text-slate-900">
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          <section className="rounded-[32px] border border-[#e2d98f] bg-white/90 p-8 shadow-lg shadow-slate-200/40">
-            <h1 className="text-3xl font-bold text-slate-900">Noticias</h1>
-            <p className="mt-4 text-slate-700">No fue posible cargar las noticias en este momento.</p>
-            <p className="mt-6 text-sm text-rose-700">{newsData.error}</p>
+        <main className="max-w-7xl mx-auto px-4 py-6">
+          <section className="rounded-2xl border border-[#e2d98f] bg-white p-8">
+            <h1 className="text-2xl font-bold">Noticias y Eventos</h1>
+            <p className="mt-2 text-slate-600">Error al cargar contenido.</p>
           </section>
         </main>
       </div>
@@ -46,50 +48,63 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
   }
 
   return (
-    <div className="min-h-screen bg-[#faf7e4] text-slate-900">
+    <div className="min-h-screen bg-[#faf7e4] text-slate-900 font-sans">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <section className="rounded-[32px] border border-[#e2d98f] bg-white/90 p-8 shadow-lg shadow-slate-200/40 mb-10">
-          <div className="grid gap-6  lg:items-center">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#276749]">
-                Noticias del colegio
-              </p>
-              <h1 className="mt-4 text-4xl font-bold text-slate-900">
-                Noticias y novedades del colegio
-              </h1>
-              <p className="mt-4 text-base text-slate-700">
-                Lee las últimas noticias y novedades. Si quieres enviar una sugerencia, visita la sección dedicada en el menú.
-              </p>
-            </div>
-            
+      
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* CONTENEDOR ÚNICO: 
+          Aquí agrupamos todo para que no haya espacios entre componentes.
+          Usamos overflow-hidden y un solo borde exterior.
+        */}
+        <div className="flex flex-col border border-[#e2d98f] bg-white/95 rounded-[24px] overflow-hidden shadow-sm">
+          
+          {/* 1. Cabecera */}
+          <header className="p-6 border-b border-[#e2d98f]/50">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#276749]">
+              Noticias del colegio
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-900">
+              Noticias y Eventos
+            </h1>
+          </header>
+
+          {/* 2. Filtros (Pegados a la cabecera) */}
+          <div className="p-2 bg-slate-50/50 border-b border-[#e2d98f]/50">
+            <NewsFilters
+              currentSort={sort}
+            />
           </div>
-        </section>
 
-        <div className="space-y-4">
-          <NewsFilters
-            categories={categories}
-            currentCategoria={categoria}
-            currentTipo={tipo}
-            currentFrom={from}
-            currentTo={to}
-          />
+          {/* 3. Lista de Noticias */}
+          <div className="p-6">
+            {!('error' in newsDataEventos) && newsDataEventos.noticias.length > 0 ? (
+              <div className="flex flex-col">
+                <NewsList 
+                  noticias={newsDataEventos.noticias}
+                  page={newsDataEventos.page}
+                  totalPages={newsDataEventos.totalPages}
+                />
 
-          <NewsList 
-            noticias={newsData.noticias}
-            page={newsData.page}
-            totalPages={newsData.totalPages}
-          />
-
-          <NewsPagination
-            page={newsData.page}
-            totalPages={newsData.totalPages}
-            totalCount={newsData.total}
-            categoria={categoria}
-            tipo={tipo}
-            from={from}
-            to={to}
-          />
+                {/* 4. Paginación (Pegada al final de la lista) */}
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <NewsPagination
+                    page={newsDataEventos.page}
+                    totalPages={newsDataEventos.totalPages}
+                    totalCount={newsDataEventos.total}
+                    categoria={categoria}
+                    tipo="EVENTO"
+                    from={from}
+                    to={to}
+                    sort={sort}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="py-10 text-center text-slate-500">
+                No se encontraron resultados.
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>

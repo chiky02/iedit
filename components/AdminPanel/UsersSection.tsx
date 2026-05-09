@@ -23,7 +23,7 @@ interface UsersSectionProps {
   isPending: boolean;
   onSubmit: (form: any) => void;
   onDelete: (id: string) => void;
-  onEdit: (item: User) => void;
+  onEdit: (user: User) => void;
 }
 
 export function UsersSection({ users, roles, isPending, onSubmit, onDelete, onEdit }: UsersSectionProps) {
@@ -34,6 +34,22 @@ export function UsersSection({ users, roles, isPending, onSubmit, onDelete, onEd
     password: '',
     roleId: roles[0]?.id || '',
     isActive: true,
+  });
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+
+  const filteredUsers = users.filter((user) => {
+    const normalizedSearch = search.toLowerCase().trim();
+    const matchesSearch =
+      user.nombre.toLowerCase().includes(normalizedSearch) ||
+      user.email.toLowerCase().includes(normalizedSearch) ||
+      user.role.nombre.toLowerCase().includes(normalizedSearch);
+
+    const matchesRole =
+      roleFilter === 'all' ||
+      user.role.id === roleFilter;
+
+    return matchesSearch && matchesRole;
   });
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -50,6 +66,18 @@ export function UsersSection({ users, roles, isPending, onSubmit, onDelete, onEd
       roleId: roles[0]?.id || '',
       isActive: true,
     });
+  };
+
+  const handleEdit = (user: User) => {
+    setForm({
+      id: user.id,
+      nombre: user.nombre,
+      email: user.email,
+      password: '', // No mostrar contraseña existente
+      roleId: user.role.id,
+      isActive: user.isActive,
+    });
+    onEdit(user);
   };
 
   return (
@@ -139,26 +167,75 @@ export function UsersSection({ users, roles, isPending, onSubmit, onDelete, onEd
         </div>
       </form>
 
+      <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700">Buscar usuarios</label>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nombre, email o rol"
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Filtrar por rol</label>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="all">Todos los roles</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-6 space-y-3">
-        {users.map((user) => (
+        {filteredUsers.map((user) => (
           <div key={user.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-semibold text-slate-900">{user.nombre}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-slate-900">{user.nombre}</p>
+                  {(user.email === 'admin@colegio.com' || user.role.nombre === 'admin') && (
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+                      Sistema
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-slate-600">{user.email} • {user.role.nombre}</p>
+                {!user.isActive && (
+                  <p className="text-xs text-rose-600 font-medium">Usuario inactivo</p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => onEdit(user)}
-                  className="rounded-2xl border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                  onClick={() => handleEdit(user)}
+                  disabled={user.email === 'admin@colegio.com'}
+                  className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                    user.email === 'admin@colegio.com'
+                      ? 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400'
+                      : 'border-emerald-600 bg-white text-emerald-700 hover:bg-emerald-50'
+                  }`}
                 >
                   Editar
                 </button>
                 <button
                   type="button"
                   onClick={() => onDelete(user.id)}
-                  className="rounded-2xl border border-rose-600 bg-white px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                  disabled={user.email === 'admin@colegio.com' || user.role.nombre === 'admin'}
+                  className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                    user.email === 'admin@colegio.com' || user.role.nombre === 'admin'
+                      ? 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400'
+                      : 'border-rose-600 bg-white text-rose-700 hover:bg-rose-50'
+                  }`}
                 >
                   Eliminar
                 </button>

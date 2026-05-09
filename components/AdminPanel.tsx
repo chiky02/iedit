@@ -10,10 +10,12 @@ import {
   updateUserAction,
   deleteUserAction,
   createRoleAction,
+  updateRoleAction,
   deleteRoleAction,
   deleteSuggestionAction,
 } from '@/app/actions';
 import { NewsSection } from './AdminPanel/NewsSection';
+import { NewsManageSection } from './AdminPanel/NewsManageSection';
 import { UsersSection } from './AdminPanel/UsersSection';
 import { RolesSection } from './AdminPanel/RolesSection';
 import { SuggestionsSection } from './AdminPanel/SuggestionsSection';
@@ -24,6 +26,7 @@ type Role = {
   nombre: string;
   descripcion: string | null;
   permissions: { permission: { slug: string; descripcion: string | null } }[];
+  users?: { id: string }[]; // Agregado para validaciones de eliminación
 };
 
 type Permission = {
@@ -48,8 +51,10 @@ type NewsItem = {
   contenido: string;
   esPublica: boolean;
   autor: { nombre: string };
-  createdAt: Date;
+  createdAt: string;
 };
+
+type AdminSection = 'noticias' | 'usuarios' | 'roles' | 'sugerencias';
 
 type Suggestion = {
   id: string;
@@ -57,7 +62,7 @@ type Suggestion = {
   email?: string | null;
   mensaje: string;
   anonimidad: boolean;
-  createdAt: Date;
+  createdAt: string;
 };
 
 interface AdminPanelProps {
@@ -66,6 +71,7 @@ interface AdminPanelProps {
   noticias: NewsItem[];
   suggestions: Suggestion[];
   permissions: Permission[];
+  currentUserPermissionSlugs: string[];
 }
 
 const tiposNoticias = [
@@ -74,21 +80,37 @@ const tiposNoticias = [
   { value: 'OTRO', label: 'Otro' },
 ];
 
-export function AdminPanel({ users, roles, noticias, suggestions, permissions }: AdminPanelProps) {
+export function AdminPanel({ users, roles, noticias, suggestions, permissions, currentUserPermissionSlugs }: AdminPanelProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [newsTab, setNewsTab] = useState<'crear' | 'gestionar'>('crear');
+  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
+
+  const canManageNoticias = currentUserPermissionSlugs.some((slug: string) => slug.startsWith('noticias:'));
+  const canManageUsuarios = currentUserPermissionSlugs.some((slug: string) => slug.startsWith('usuarios:'));
+  const canManageRoles = currentUserPermissionSlugs.some((slug: string) => slug.startsWith('roles:'));
+  const canManageSugerencias = currentUserPermissionSlugs.some((slug: string) => slug.startsWith('sugerencias:'));
+
+  const availableSections: AdminSection[] = [
+    canManageNoticias && 'noticias',
+    canManageUsuarios && 'usuarios',
+    canManageRoles && 'roles',
+    canManageSugerencias && 'sugerencias',
+  ].filter(Boolean) as AdminSection[];
 
   // Estado inicial basado en hash de URL
-  const [activeSection, setActiveSection] = useState<'noticias' | 'usuarios' | 'roles' | 'sugerencias'>('noticias');
+  const [activeSection, setActiveSection] = useState<AdminSection>(availableSections[0] ?? 'noticias');
 
   // Detectar sección desde hash de URL
   useEffect(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (['noticias', 'usuarios', 'roles', 'sugerencias'].includes(hash)) {
-      setActiveSection(hash as 'noticias' | 'usuarios' | 'roles' | 'sugerencias');
+    const hash = window.location.hash.replace('#', '') as AdminSection;
+    if (availableSections.includes(hash)) {
+      setActiveSection(hash);
+    } else if (availableSections.length > 0) {
+      setActiveSection(availableSections[0]);
     }
-  }, []);
+  }, [availableSections]);
 
   // Actualizar hash cuando cambia la sección
   const handleSectionChange = (section: 'noticias' | 'usuarios' | 'roles' | 'sugerencias') => {
@@ -111,9 +133,20 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
         showMessage('error', result.error);
       } else {
         showMessage('success', form.id ? 'Noticia actualizada correctamente' : 'Noticia creada correctamente');
+        setSelectedNews(null);
         router.refresh();
       }
     });
+  }
+
+  function handleNewsEdit(item: NewsItem) {
+    setSelectedNews(item);
+    setNewsTab('crear');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function handleCancelNewsEdit() {
+    setSelectedNews(null);
   }
 
   async function handleUserSubmit(form: any) {
@@ -133,11 +166,14 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
 
   async function handleRoleSubmit(form: any) {
     startTransition(async () => {
-      const result = await createRoleAction(form.nombre, form.descripcion, form.permissions);
+      const result = form.id
+        ? await updateRoleAction(form.id, form.nombre, form.descripcion, form.permissions)
+        : await createRoleAction(form.nombre, form.descripcion, form.permissions);
+
       if (result.error) {
         showMessage('error', result.error);
       } else {
-        showMessage('success', 'Rol creado correctamente');
+        showMessage('success', form.id ? 'Rol actualizado correctamente' : 'Rol creado correctamente');
         router.refresh();
       }
     });
@@ -153,7 +189,23 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
   }
 
   async function handleDeleteUser(id: string) {
-    if (!confirm('¿Eliminar este usuario?')) return;
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+
+    let confirmMessage = `¿Eliminar el usuario "${user.nombre}" (${user.email})?`;
+    if (user.email === 'admin@colegio.com') {
+      confirmMessage = 'No se puede eliminar el usuario administrador del sistema.';
+    } else if (user.role.nombre === 'admin') {
+      confirmMessage = 'No se puede eliminar usuarios con rol de administrador.';
+    }
+
+    if (user.email === 'admin@colegio.com' || user.role.nombre === 'admin') {
+      alert(confirmMessage);
+      return;
+    }
+
+    if (!confirm(confirmMessage)) return;
+
     startTransition(async () => {
       const result = await deleteUserAction(id);
       if (result.error) showMessage('error', result.error);
@@ -162,7 +214,24 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
   }
 
   async function handleDeleteRole(id: string) {
-    if (!confirm('¿Eliminar este rol?')) return;
+    const role = roles.find(r => r.id === id);
+    if (!role) return;
+
+    let confirmMessage = `¿Eliminar el rol "${role.nombre}"?`;
+    if (role.nombre === 'admin') {
+      confirmMessage = 'No se puede eliminar el rol de administrador del sistema.';
+      alert(confirmMessage);
+      return;
+    }
+
+    if (role.users && role.users.length > 0) {
+      confirmMessage = `El rol "${role.nombre}" está asignado a ${role.users.length} usuario(s). Primero reasigna los usuarios a otro rol antes de eliminarlo.`;
+      alert(confirmMessage);
+      return;
+    }
+
+    if (!confirm(confirmMessage)) return;
+
     startTransition(async () => {
       const result = await deleteRoleAction(id);
       if (result.error) showMessage('error', result.error);
@@ -179,9 +248,8 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
     });
   }
 
-  async function handleEditNews(item: any) {
-    // Los cambios se hacen en la sección, simplemente actualizamos el estado
-    // que ya está en NewsSection
+  async function handleEditUser(user: any) {
+    // La edición se maneja en UsersSection, aquí solo refrescamos si es necesario
   }
 
   return (
@@ -190,6 +258,7 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
       <AdminSidebar
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
+        allowedSections={availableSections}
       />
 
       {/* Contenido Principal */}
@@ -217,17 +286,52 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
           )}
 
           {/* Contenido de las Secciones */}
-          {activeSection === 'noticias' && (
-            <NewsSection
-              noticias={noticias}
-              isPending={isPending}
-              onSubmit={handleNewsSubmit}
-              onDelete={handleDeleteNews}
-              onEdit={handleEditNews}
-            />
+          {activeSection === 'noticias' && canManageNoticias && (
+            <div className="space-y-6">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setNewsTab('crear')}
+                  className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                    newsTab === 'crear'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Crear noticia
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewsTab('gestionar')}
+                  className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                    newsTab === 'gestionar'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  Gestionar noticias
+                </button>
+              </div>
+
+              {newsTab === 'crear' ? (
+                <NewsSection
+                  isPending={isPending}
+                  onSubmit={handleNewsSubmit}
+                  selectedNews={selectedNews}
+                  onCancelEdit={handleCancelNewsEdit}
+                />
+              ) : (
+                <NewsManageSection
+                  noticias={noticias}
+                  isPending={isPending}
+                  onDelete={handleDeleteNews}
+                  onEdit={handleNewsEdit}
+                />
+              )}
+            </div>
           )}
 
-          {activeSection === 'usuarios' && (
+          {activeSection === 'usuarios' && canManageUsuarios && (
             <UsersSection
               users={users}
               roles={roles}
@@ -238,7 +342,7 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
             />
           )}
 
-          {activeSection === 'roles' && (
+          {activeSection === 'roles' && canManageRoles && (
             <RolesSection
               roles={roles}
               permissions={permissions}
@@ -248,12 +352,18 @@ export function AdminPanel({ users, roles, noticias, suggestions, permissions }:
             />
           )}
 
-          {activeSection === 'sugerencias' && (
+          {activeSection === 'sugerencias' && canManageSugerencias && (
             <SuggestionsSection
               suggestions={suggestions}
               isPending={isPending}
               onDelete={handleDeleteSuggestion}
             />
+          )}
+
+          {availableSections.length === 0 && (
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center text-rose-700">
+              No tienes permisos suficientes para ver ninguna sección del panel administrativo.
+            </div>
           )}
         </main>
       </div>

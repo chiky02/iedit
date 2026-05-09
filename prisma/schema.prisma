@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = env("DATABASE_PROVIDER")
   url      = env("DATABASE_URL")
 }
 
@@ -48,7 +48,7 @@ model Noticia {
   id        String       @id @default(cuid())
   titulo    String
   slug      String       @unique
-  contenido String       @db.LongText
+  contenido String
   categoria String
   tipo      TipoNoticia
   imagenUrl String?
@@ -63,7 +63,7 @@ model Sugerencia {
   id         String   @id @default(cuid())
   remitente  String?
   email      String?
-  mensaje    String   @db.LongText
+  mensaje    String
   anonimidad Boolean  @default(true)
   sourceHash String?
   createdAt  DateTime @default(now())
