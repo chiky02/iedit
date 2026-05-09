@@ -3,6 +3,24 @@
 import { prisma } from '@/lib/prisma';
 import { createToken, setAuthCookie, verifyAuth, clearAuthCookie } from '@/lib/auth';
 import bcryptjs from 'bcryptjs';
+import { Prisma } from '@prisma/client';
+
+/** * CORRECCIÓN DE TIPOS BASE
+ * Usamos Prisma.PromiseReturnType con el objeto 'include' para que 
+ * TS sepa que las relaciones existen.
+ */
+
+type NoticiaConAutor = Prisma.PromiseReturnType<typeof prisma.noticia.findMany<{
+  include: { autor: true }
+}>>[number];
+
+type SugerenciaConFecha = Awaited<ReturnType<typeof prisma.sugerencia.findMany>>[number];
+
+type RolePermissionConSlug = Prisma.PromiseReturnType<typeof prisma.role.findMany<{
+  include: { permissions: { include: { permission: true } } }
+}>>[number]['permissions'][number];
+
+type PermissionData = Awaited<ReturnType<typeof prisma.permission.findMany>>[number];
 
 type PublicNewsResult =
   | {
@@ -28,11 +46,6 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-type NoticiaConAutor = Awaited<ReturnType<typeof prisma.noticia.findMany>>[number];
-type SugerenciaConFecha = Awaited<ReturnType<typeof prisma.sugerencia.findMany>>[number];
-type RolePermissionConSlug = Awaited<ReturnType<typeof prisma.role.findMany>>[number]['permissions'][number];
-type PermissionData = Awaited<ReturnType<typeof prisma.permission.findMany>>[number];
-
 async function getSessionUser() {
   const auth = await verifyAuth();
   if (!auth) return null;
@@ -53,9 +66,10 @@ async function getSessionUser() {
   });
 }
 
-function hasPermission(user: Awaited<ReturnType<typeof getSessionUser>>, slug: string) {
+// Corregido el tipo de 'user' para que acepte el retorno de getSessionUser
+function hasPermission(user: Prisma.PromiseReturnType<typeof getSessionUser>, slug: string) {
   if (!user || !user.role) return false;
-  return user.role.permissions.some((rolePermission: { permission: { slug: string } }) => rolePermission.permission.slug === slug);
+  return user.role.permissions.some((rolePermission) => rolePermission.permission.slug === slug);
 }
 
 async function requireAuth() {
@@ -151,10 +165,11 @@ export async function getPublicNews(params: {
       include: { autor: true },
     });
 
-    // Format dates as strings to avoid hydration mismatch
+    // Formateo de fechas y mapeo seguro
     const noticiasWithFormattedDates = noticias.map((noticia: NoticiaConAutor) => ({
       ...noticia,
       createdAt: noticia.createdAt.toLocaleDateString('es-CO'),
+      autor: { nombre: noticia.autor.nombre }
     }));
 
     return {
@@ -175,7 +190,7 @@ export async function getNewsCategories() {
     select: { categoria: true },
     orderBy: { categoria: 'asc' },
   });
-  return Array.from(new Set(categories.map((item: { categoria: string }) => item.categoria))).sort();
+  return Array.from(new Set(categories.map((item) => item.categoria))).sort();
 }
 
 export async function getAdminData() {
@@ -204,9 +219,8 @@ export async function getAdminData() {
     }),
   ]);
 
-  const currentUserPermissionSlugs = user.role?.permissions.map((rolePermission: RolePermissionConSlug) => rolePermission.permission.slug) ?? [];
+  const currentUserPermissionSlugs = user.role?.permissions.map((rp) => rp.permission.slug) ?? [];
 
-  // Format dates as strings to avoid hydration mismatch
   const noticiasWithFormattedDates = noticias.map((noticia: NoticiaConAutor) => ({
     ...noticia,
     createdAt: noticia.createdAt.toLocaleDateString('es-CO'),
@@ -226,6 +240,9 @@ export async function getAdminData() {
     currentUserPermissionSlugs,
   };
 }
+
+// ... Resto de funciones (createNewsAction, updateNewsAction, etc.) se mantienen igual 
+// ya que usan lógica de ejecución y no dependen de los tipos de lectura arriba definidos.
 
 export async function createNewsAction(
   titulo: string,
@@ -267,6 +284,7 @@ export async function createNewsAction(
     return { error: error instanceof Error ? error.message : 'Error al guardar la noticia' };
   }
 }
+
 
 export async function updateNewsAction(
   id: string,
