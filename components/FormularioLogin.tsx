@@ -89,12 +89,6 @@ export function FormularioLogin() {
             {loading ? 'Enviando...' : 'Iniciar sesión'}
           </button>
         </form>
-
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-600">
-          <p className="font-medium text-slate-900">Credenciales de prueba</p>
-          <p>Email: admin@colegio.com</p>
-          <p>Contraseña: admin123</p>
-        </div>
       </div>
     </div>
   );

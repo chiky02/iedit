@@ -167,7 +167,7 @@ export function NewsSection({ isPending, onSubmit, selectedNews, onCancelEdit }:
                 onChange={(e) => setForm({ ...form, esPublica: e.target.checked })}
                 className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
               />
-              Publicar de inmediato
+              Mostrar en página principal
             </label>
             <div className="flex gap-3">
               {form.id && (
