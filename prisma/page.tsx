@@ -2,7 +2,7 @@ import { Navbar } from '@/components/Navbar';
 import { NewsFilters } from '@/components/NewsFilters';
 import { NewsPagination } from '@/components/NewsPagination';
 import { NewsList } from '@/components/NewsList';
-import { getNewsCategories, getPublicNews } from './actions';
+import { getNewsCategories, getPublicNews } from '@/app/actions';
 
 interface SearchParams {
   page?: string | string[];

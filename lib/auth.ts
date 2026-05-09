@@ -1,4 +1,4 @@
-import { jwtVerify, SignJWT } from 'jose';
+import { jwtVerify, SignJWT, type JWTPayload } from 'jose';
 import { cookies } from 'next/headers';
 
 const secretKey = process.env.AUTH_SECRET;
@@ -8,7 +8,7 @@ if (!secretKey) {
 
 const secret = new TextEncoder().encode(secretKey);
 
-export interface JwtPayload {
+export interface JwtPayload extends JWTPayload {
   userId: string;
   email: string;
 }
