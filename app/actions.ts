@@ -28,6 +28,10 @@ function normalizeString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+type NoticiaConAutor = Awaited<ReturnType<typeof prisma.noticia.findMany>>[number];
+type SugerenciaConFecha = Awaited<ReturnType<typeof prisma.sugerencia.findMany>>[number];
+type RolePermissionConSlug = Awaited<ReturnType<typeof prisma.role.findMany>>[number]['permissions'][number];
+
 async function getSessionUser() {
   const auth = await verifyAuth();
   if (!auth) return null;
@@ -147,7 +151,7 @@ export async function getPublicNews(params: {
     });
 
     // Format dates as strings to avoid hydration mismatch
-    const noticiasWithFormattedDates = noticias.map((noticia) => ({
+    const noticiasWithFormattedDates = noticias.map((noticia: NoticiaConAutor) => ({
       ...noticia,
       createdAt: noticia.createdAt.toLocaleDateString('es-CO'),
     }));
@@ -199,15 +203,15 @@ export async function getAdminData() {
     }),
   ]);
 
-  const currentUserPermissionSlugs = user.role?.permissions.map((rolePermission) => rolePermission.permission.slug) ?? [];
+  const currentUserPermissionSlugs = user.role?.permissions.map((rolePermission: RolePermissionConSlug) => rolePermission.permission.slug) ?? [];
 
   // Format dates as strings to avoid hydration mismatch
-  const noticiasWithFormattedDates = noticias.map((noticia) => ({
+  const noticiasWithFormattedDates = noticias.map((noticia: NoticiaConAutor) => ({
     ...noticia,
     createdAt: noticia.createdAt.toLocaleDateString('es-CO'),
   }));
 
-  const suggestionsWithFormattedDates = suggestions.map((suggestion) => ({
+  const suggestionsWithFormattedDates = suggestions.map((suggestion: SugerenciaConFecha) => ({
     ...suggestion,
     createdAt: suggestion.createdAt.toLocaleDateString('es-CO'),
   }));
