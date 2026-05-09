@@ -174,7 +174,7 @@ export async function getNewsCategories() {
     select: { categoria: true },
     orderBy: { categoria: 'asc' },
   });
-  return Array.from(new Set(categories.map((item) => item.categoria))).sort();
+  return Array.from(new Set(categories.map((item: { categoria: string }) => item.categoria))).sort();
 }
 
 export async function getAdminData() {
