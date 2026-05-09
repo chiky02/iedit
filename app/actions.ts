@@ -50,7 +50,7 @@ async function getSessionUser() {
 
 function hasPermission(user: Awaited<ReturnType<typeof getSessionUser>>, slug: string) {
   if (!user || !user.role) return false;
-  return user.role.permissions.some((rolePermission) => rolePermission.permission.slug === slug);
+  return user.role.permissions.some((rolePermission: { permission: { slug: string } }) => rolePermission.permission.slug === slug);
 }
 
 async function requireAuth() {
